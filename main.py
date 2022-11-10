@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from typing import *
 from math import ceil
 from itertools import chain
+from sys import argv
 
 generator = pipeline('text-generation', model='distilgpt2')
 tokenizer = generator.tokenizer
@@ -74,7 +75,14 @@ class ParagraphLogitsProcessor(LogitsProcessor):
     return scores
 
 def main():
-    with open('sample.txt') as f:
+    try:
+        _, in_path, out_path = argv
+    except:
+        print("Usage: paragrai <input_file> <output_file>")
+        return
+
+
+    with open(in_path) as f:
         sample = f.read()
 
     batch_size=256
@@ -105,7 +113,7 @@ def main():
     out_tokens = list(chain(*[result['generated_token_ids'] for result in results]))
     out = tokenizer.decode(out_tokens, skip_special_tokens=True)
 
-    with open("out.txt", 'w') as f:
+    with open(out_path, 'w') as f:
         f.write(out)
 
 if __name__ == "__main__":
