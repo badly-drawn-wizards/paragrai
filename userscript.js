@@ -140,6 +140,8 @@ const update = async (cached) => {
       const result = await requestGeneration(text, cached);
       updateGeneratedText(result);
       updateIcon(mode);
+    } else {
+      updateGeneratedText(text);
     }
   } catch(e) {
     updateIcon("error")
