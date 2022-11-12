@@ -16,8 +16,9 @@
               numpy
               transformers
               fastapi
+              uvicorn
+              pydantic
             ]))
-            uvicorn
           ];
         };
 

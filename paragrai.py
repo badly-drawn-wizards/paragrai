@@ -71,21 +71,6 @@ class ParagraphLogitsProcessor(LogitsProcessor):
 
     return scores
 
-def main():
-    try:
-        _, in_path, out_path = argv
-    except:
-        print("Usage: paragrai <input_file> <output_file>")
-        return
-
-
-    with open(in_path) as f:
-        sample = f.read()
-
-
-    with open(out_path, 'w') as f:
-        f.write(out)
-
 @dataclass
 class ParagraiConfig:
   model: str = 'distilgpt2'
@@ -93,28 +78,35 @@ class ParagraiConfig:
   batch_size: int = 256
   lb_weight: float = 3.6
 
-class Cache:
-  def __init__(self, func, path, hash=sha256):
-    self.func = func
-    self.path = path
-    self.hash = hash
+@dataclass
+class CacheConfig:
+  cache_dir: str
 
-  def lookup(self, content):
-    digest = self.hash(content.encode()).hexdigest()
+class Cache:
+  def __init__(self, func, meta, config):
+    self.func = func
+    self.meta = meta
+    self.config = config
+
+  def lookup(self, content, cached):
+    cache_dir = self.config.cache_dir
+    digest = sha256(self.meta + content.encode()).hexdigest()
     try:
-      with open(join(self.path, digest), 'r') as f:
-        return f.read()
+      if cached:
+        with open(join(cache_dir, digest), 'r') as f:
+          return f.read()
     except FileNotFoundError:
-      result = self.func(content)
-      try:
-        with open(join(self.path, digest), 'w') as f:
-          f.write(content)
-      except:
-        log.exception("Error when writing to cache")
-      return result
+      pass
+    result = self.func(content)
+    try:
+      with open(join(cache_dir, digest), 'w') as f:
+        f.write(result)
+    except:
+      log.exception("Error when writing to cache")
+    return result
 
 class ParagraiGenerator:
-  def __init__(self, config):
+  def __init__(self, config: ParagraiConfig):
     self.config = config
     self.generator = pipeline('text-generation', self.config.model)
 
@@ -127,7 +119,7 @@ class ParagraiGenerator:
     word_mask = get_word_mask(tokens, tokenizer.decode)
 
     para_logits_processor = ParagraphLogitsProcessor(
-        tokens, self, word_mask, tokenizer.eos_token_id,
+        tokens, self.config.batch_size, word_mask, tokenizer.eos_token_id,
         linebreaks, self.config.min_space, self.config.lb_weight)
 
     results = self.generator(
@@ -135,10 +127,21 @@ class ParagraiGenerator:
         logits_processor=[para_logits_processor],
         return_tensors=True,
         handle_long_generation="hole",
-        max_new_tokens=batch_size,
+        max_new_tokens=self.config.batch_size,
         num_return_sequences=para_logits_processor.num_batches(),
         do_sample=True,
         num_beams=2)
 
     out_tokens = list(chain(*[result['generated_token_ids'] for result in results]))
     return tokenizer.decode(out_tokens, skip_special_tokens=True)
+
+class Paragrai:
+  def __init__(self, paragrai_config: ParagraiConfig, cache_config: CacheConfig):
+    self.paragrai_config = paragrai_config
+    self.cache_config = cache_config
+
+    self.generator = ParagraiGenerator(paragrai_config)
+    self.cache = Cache(self.generator.generate, str(paragrai_config).encode(), cache_config)
+
+  def generate(self, sample, cached):
+    return self.cache.lookup(sample, cached)
