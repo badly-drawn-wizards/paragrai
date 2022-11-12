@@ -22,8 +22,8 @@ const addStyle = (css) => {
     head.appendChild(style);
 }
 const style = [
-  ".paragrai-mode-original .cha-words:not(.paragrai-original) { display: none }",
-  ".paragrai-mode-generated .cha-words:not(.paragrai-generated) { display: none }",
+  ".paragrai-mode-original .text-left:not(.paragrai-original) { display: none }",
+  ".paragrai-mode-generated .text-left:not(.paragrai-generated) { display: none }",
   "@keyframes loading { 0 { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }",
   `.paragrai-icon.${iconStates['loading']}::before { animation: loading 1s infinite; }`
 ].join("\n");
@@ -62,13 +62,16 @@ const idemCreate = (parentSelector, childSelector, create) => {
   return child;
 }
 
-const selectContent = () => document.querySelector('.cha-content');
-const selectOriginal = () => selectContent().querySelector('.cha-words:not(.paragrai-generated)');
-const getOriginalText = () => [...selectOriginal().querySelectorAll("p, .dib.pr")].map(x => x.textContent.trim()).join("\n").trim();
-const selectGenerated = () => idemCreate('.cha-content', '.cha-words.paragrai-generated', parent => {
+const selectContent = () => document.querySelector('.reading-content');
+const selectOriginal = () => selectContent().querySelector('.text-left:not(.paragrai-generated)');
+
+const getTexts = node => node.nodeName == '#text' ? node.textContent : [...node.childNodes].flatMap(n => getTexts(n));
+const getOriginalTexts = () => getTexts(selectOriginal()).map(t => t.trim()).filter(t => t !== "");
+
+const selectGenerated = () => idemCreate('.reading-content', '.text-left.paragrai-generated', parent => {
   const el = document.createElement('div');
   parent.appendChild(el);
-  el.classList.add('cha-words', 'paragrai-generated');
+  el.classList.add('text-left', 'paragrai-generated');
   return el;
 });
 const selectIcon = () => idemCreate('.action_list_icon', '.paragrai-icon', parent => {
@@ -90,20 +93,20 @@ const updateIcon = (state) => {
   icon.classList.add(iconStates[state]);
 }
 
-const updateParagraphs = (el, text) => {
-  const paragraphs = text.split(/\n+/)
-
-  while(el.lastChild) el.lastChild.remove();
-  for(let paragraph of paragraphs) {
+const para = (text) => {
     let p = document.createElement('p')
-    p.textContent = paragraph
-    el.appendChild(p);
+    p.textContent = text;
+    return p;
+};
+const setChildNodes = (el, nodes) => {
+  while(el.lastChild) el.lastChild.remove();
+  for(let node of nodes) {
+    el.appendChild(node);
   }
 }
-const updateGeneratedText = text => {
-  const original = selectOriginal();
+const updateGenerated = nodes => {
   const generated = selectGenerated();
-  updateParagraphs(generated, text);
+  setChildNodes(generated, nodes);
 }
 
 const updateOriginal = () => {
@@ -126,27 +129,48 @@ const getMode = async () => (await GM.getValue("mode")) ? "generated" : "origina
 const toggleMode = async () => await GM.setValue("mode", !(await GM.getValue("mode")));
 const setGeneratedMode = () => GM.setValue("mode", true);
 
+const maxBy = (xs, f) => {
+  const by = xs.map(f);
+  return xs[by.indexOf(Math.max(...by))]
+}
+
+const heuristicBulkContent = (texts, threshold) => {
+  const length = texts.map(t => t.length).reduce((x,y) => x+y, 0);
+  const text = maxBy(texts, t => t.length);
+  const proportion = text.length / length;
+  if (proportion >= threshold) { 
+    return text
+  } else {
+    return null;
+  }
+}
+
 const update = async (cached) => {
-  const text = getOriginalText();
+  const texts = getOriginalTexts();
+  const threshold = 0.8;
   const mode = await getMode();
 
   updateOriginal();
   updateIcon(mode);
 
   
+  const original = selectOriginal();
+  var nodes = () => [...original.childNodes].map(node => node.cloneNode(true));
   try {
-    if(!hasNewLine(text) && mode === 'generated') {
+    const mainText = heuristicBulkContent(texts, threshold);
+    if (mainText != null && mode === 'generated') {
       updateIcon("loading")
-      const result = await requestGeneration(text, cached);
-      updateGeneratedText(result);
-      updateIcon(mode);
-    } else {
-      updateGeneratedText(text);
+      const result = await requestGeneration(mainText, cached);
+      const texts = result.split("\n");
+      nodes = () => texts.map(text => para(text));
     }
+    updateIcon(mode);
+  
   } catch(e) {
     updateIcon("error")
     throw e;
   } finally {
+    updateGenerated(nodes());
     updateMode(mode);
   }
 }
@@ -170,4 +194,4 @@ const main = () => {
   });
 }
 
-main()
+main();
