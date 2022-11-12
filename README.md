@@ -7,16 +7,26 @@ When you read translated web novels on aggregator sites, some novels are machine
 ## After
 
 When you read translated web novels on aggregator sites, some novels are machine translated or scraped from other sites with no regard to formatting.
+
 Particularly, some chapters have absolutely no paragraphs or line breaks. This can sometimes span multiple chapters with no end in sight.
+
 Now of course you can just give up reading at this point, but we aren't quitters. The solution:
+
 machine learning.
+
 We use the distilGPT2 text generation model and force it to either generate from a given linefeed free text or insert a newline.
+
 Doing this for the whole text is too slow so we have split it into batches.
+
 There are some fiddley parameters that we have tuned to make this well enough. The text generation is exposed via a REST API with a janky cache so that generation is only performed once per chapter.
+
 This API then consumed by a GreaseMonkey script that runs on the aforementioned aggregator site which replaces the run-on chapter with the better flowing one.
+
 There is also an added button to toggle the original.
+
 Long pressing the button forces a generation which bypasses the cache.
-All in all this was a fun little side project which should in now way be taken seriously.
+
+All in all this was a fun little side project which should in no way be taken seriously.
 
 ## Evaluation on the above
 
