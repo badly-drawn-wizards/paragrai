@@ -23,7 +23,9 @@ const addStyle = (css) => {
 }
 const style = [
   ".paragrai-mode-original .cha-words:not(.paragrai-original) { display: none }",
-  ".paragrai-mode-generated .cha-words:not(.paragrai-generated) { display: none }"
+  ".paragrai-mode-generated .cha-words:not(.paragrai-generated) { display: none }",
+  "@keyframes loading { 0 { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }",
+  `.paragrai-icon.${iconStates['loading']}::before { animation: loading 1s infinite; }`
 ].join("\n");
   
 
