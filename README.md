@@ -37,7 +37,7 @@ machine learning.' is kind weird. However it performs well enough for its built 
 
 ## API
 - Install python dependencies in `requirements.txt`
-- Run with `univicorn api:api`. It is hard-coded to cache results under `~/.cache/paragrai`.
+- Run with `uvicorn api:api`. It is hard-coded to cache results under `~/.cache/paragrai`.
 
 ## GreaseMonkey
 - Install GreaseMonkey and the `userscript.js` script
