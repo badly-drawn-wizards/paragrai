@@ -64,7 +64,7 @@ const idemCreate = (parentSelector, childSelector, create) => {
 
 const selectContent = () => document.querySelector('.cha-content');
 const selectOriginal = () => selectContent().querySelector('.cha-words:not(.paragrai-generated)');
-const getOriginalText = () => [...selectOriginal().querySelectorAll(".dib.pr")].map(x => x.textContent).join("").trim();
+const getOriginalText = () => [...selectOriginal().querySelectorAll(".dib.pr")].map(x => x.textContent.trim()).join("\n").trim();
 const selectGenerated = () => idemCreate('.cha-content', '.cha-words.paragrai-generated', parent => {
   const el = document.createElement('div');
   parent.appendChild(el);
